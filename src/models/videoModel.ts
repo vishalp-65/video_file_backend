@@ -1,12 +1,29 @@
-import { Sequelize, DataTypes } from "sequelize";
+import { DataTypes, Model, Optional, Sequelize } from "sequelize";
+import { VideoAttributes } from "../types/video";
 
-const sequelize = new Sequelize({
+interface VideoCreationAttributes extends Optional<VideoAttributes, "id"> {}
+
+class Video
+    extends Model<VideoAttributes, VideoCreationAttributes>
+    implements VideoAttributes
+{
+    public id!: string;
+    public url!: string;
+    public filename!: string;
+    public mimetype!: string;
+    public size!: number;
+    public duration!: number;
+
+    public readonly createdAt!: Date;
+    public readonly updatedAt!: Date;
+}
+
+export const sequelize = new Sequelize({
     dialect: "sqlite",
     storage: "./database.sqlite",
 });
 
-const Video = sequelize.define(
-    "Video",
+Video.init(
     {
         id: {
             type: DataTypes.UUID,
@@ -35,8 +52,10 @@ const Video = sequelize.define(
         },
     },
     {
+        sequelize,
+        tableName: "videos",
         timestamps: true,
     }
 );
 
-export { sequelize, Video };
+export default Video;

@@ -1,9 +1,9 @@
 import { Router } from "express";
 
-import v1Routes from "./v1/index";
+import videoRoutes from "./v1/index";
 
 const router = Router();
 
-router.use("/v1", v1Routes);
+router.use("/v1", videoRoutes);
 
 export default router;

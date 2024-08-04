@@ -10,7 +10,7 @@ export const uploadToS3 = async (
 ): Promise<string> => {
     const putObjectCommand = new PutObjectCommand({
         Bucket: process.env.AWS_S3_BUCKET,
-        Key: `uploads/${key}-${Date.now()}`,
+        Key: `uploads/${key}`,
     });
 
     const signedURL = await getSignedUrl(s3Client, putObjectCommand, {

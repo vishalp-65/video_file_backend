@@ -1,12 +1,16 @@
 import { uploadToS3 } from "../utils/s3_utils";
-import { getVideoDuration, getVideoFormat } from "../utils/video_utils";
-import { db } from "../database/sqlite";
+import {
+    downloadFile,
+    getVideoDuration,
+    trimVideoFile,
+} from "../utils/video_utils";
 import fs from "fs";
 import ApiError from "../utils/ApiError";
 import httpStatus from "http-status";
-import { Video } from "../models/videoModel";
+import path from "path";
+import Video from "../models/videoModel";
 
-const uploadVideo = async (file: Express.Multer.File) => {
+export const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
     const duration = await getVideoDuration(tempPath);
 
@@ -43,6 +47,7 @@ const uploadVideo = async (file: Express.Multer.File) => {
 
     const key = `videos/${filename}`;
     const url = await uploadToS3(fs.readFileSync(tempPath), key, mimetype);
+    console.log("url", url);
     await fs.promises.unlink(tempPath);
 
     // Save metadata to SQLite
@@ -54,9 +59,37 @@ const uploadVideo = async (file: Express.Multer.File) => {
         duration,
     });
 
-    console.log("video", video);
+    return video;
+};
+
+export const trimVideo = async (
+    videoId: string,
+    start: number,
+    end: number
+): Promise<string> => {
+    const video = await Video.findByPk(videoId);
+    if (!video) {
+        throw new ApiError(httpStatus.NOT_FOUND, "Video not found");
+    }
+
+    const tempFilePath = path.join(__dirname, `../../temp/${video.filename}`);
+    const trimmedFilePath = path.join(
+        __dirname,
+        `../../temp/trimmed-${video.filename}`
+    );
+
+    await downloadFile(video.url, tempFilePath);
+    console.log("file downloaded");
+
+    await trimVideoFile(tempFilePath, trimmedFilePath, start, end);
+    console.log("file trimmed");
+
+    const trimmedFile = fs.readFileSync(trimmedFilePath);
+    const url = await uploadToS3(trimmedFile, video.filename, video.mimetype);
+    console.log("url", url);
+
+    fs.unlinkSync(tempFilePath);
+    fs.unlinkSync(trimmedFilePath);
 
     return url;
 };
-
-export { uploadVideo };
