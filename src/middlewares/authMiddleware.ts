@@ -1,18 +1,22 @@
 import { Request, Response, NextFunction } from "express";
+import ApiError from "../utils/ApiError";
 import httpStatus from "http-status";
 
+const staticApiToken = process.env.STATIC_TOKEN!;
+
 const authMiddleware = (req: Request, res: Response, next: NextFunction) => {
-    const header = req.headers["authorization"];
-    if (!header)
-        return res
-            .status(httpStatus.UNAUTHORIZED)
-            .json({ error: "Invalid authorization" });
-    const token = header.split(" ")[1];
-    if (!token || token !== process.env.STATIC_TOKEN) {
-        return res
-            .status(httpStatus.UNAUTHORIZED)
-            .json({ error: "Unauthorized" });
+    const token = req.headers["authorization"];
+
+    if (!token) {
+        return next(
+            new ApiError(httpStatus.UNAUTHORIZED, "No API token provided")
+        );
     }
+
+    if (token !== staticApiToken) {
+        return next(new ApiError(httpStatus.UNAUTHORIZED, "Invalid API token"));
+    }
+
     next();
 };
 

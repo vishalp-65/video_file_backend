@@ -4,11 +4,13 @@ import { db } from "../database/sqlite";
 import fs from "fs";
 import ApiError from "../utils/ApiError";
 import httpStatus from "http-status";
+import { Video } from "../models/videoModel";
 
 const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
     const duration = await getVideoDuration(tempPath);
-    const videoType = await getVideoFormat(tempPath);
+
+    const { mimetype, size, filename, buffer } = file;
     const allowedVideoTypes = [
         "video/mp4",
         "video/mkv",
@@ -16,8 +18,11 @@ const uploadVideo = async (file: Express.Multer.File) => {
         "video/mov",
     ];
 
-    if (!allowedVideoTypes.includes(videoType))
-        throw new ApiError(httpStatus.BAD_REQUEST, "Unsupported video type");
+    if (!allowedVideoTypes.includes(mimetype))
+        throw new ApiError(
+            httpStatus.UNSUPPORTED_MEDIA_TYPE,
+            "Unsupported video type"
+        );
 
     // Size and duration check
     const maxSizeMB = 25;
@@ -36,18 +41,20 @@ const uploadVideo = async (file: Express.Multer.File) => {
         );
     }
 
-    const key = `videos/${file.filename}`;
-    const url = await uploadToS3(fs.readFileSync(tempPath), key, videoType);
+    const key = `videos/${filename}`;
+    const url = await uploadToS3(fs.readFileSync(tempPath), key, mimetype);
     await fs.promises.unlink(tempPath);
 
     // Save metadata to SQLite
-    await (
-        await db
-    ).run("INSERT INTO videos (id, url, duration) VALUES (?, ?, ?)", [
-        file.filename,
-        url,
+    const video = await Video.create({
+        url: url,
+        filename,
+        mimetype,
+        size,
         duration,
-    ]);
+    });
+
+    console.log("video", video);
 
     return url;
 };

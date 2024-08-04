@@ -7,7 +7,6 @@ import ApiError from "../utils/ApiError";
 export const upload = catchAsync(
     async (req: Request, res: Response, next: NextFunction) => {
         if (!req.file) {
-            // Instead of returning, throw an ApiError
             throw new ApiError(httpStatus.BAD_REQUEST, "File not found");
         }
 
@@ -15,7 +14,10 @@ export const upload = catchAsync(
 
         // Ensure that the file is a video
         if (!videoType.startsWith("video/")) {
-            throw new ApiError(httpStatus.BAD_REQUEST, "File should be video");
+            throw new ApiError(
+                httpStatus.UNSUPPORTED_MEDIA_TYPE,
+                "File should be video"
+            );
         }
 
         try {
