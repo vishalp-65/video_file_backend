@@ -16,6 +16,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/sqlite3": "^3.1.11",
     "@types/swagger-ui-express": "^4.1.6",
+    "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",
     "tsc-watch": "^6.2.0",
     "typescript": "^5.4.5"
@@ -42,6 +43,7 @@
     "sequelize": "^6.37.3",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "uuid": "^10.0.0"
   }
 }

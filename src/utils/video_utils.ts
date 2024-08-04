@@ -8,7 +8,7 @@ import path from "path";
 import { ensureDirectoryExists } from "../validation/validatePath";
 
 // Set the path to the ffprobe binary
-ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe"); // Replace with your actual path
+ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe");
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 export const getVideoDuration = (filePath: string): Promise<number> => {
@@ -116,4 +116,26 @@ export const downloadFile = async (
             "can't get video from S3"
         );
     }
+};
+
+export const mergeVideoFiles = (
+    inputPaths: string[],
+    outputPath: string
+): Promise<void> => {
+    return new Promise<void>((resolve, reject) => {
+        const ffmpegCommand = ffmpeg();
+        inputPaths.forEach((filePath) => ffmpegCommand.input(filePath));
+        ffmpegCommand
+            .on("end", () => resolve())
+            .on("error", (err) => {
+                console.error("Merge error:", err);
+                reject(
+                    new ApiError(
+                        httpStatus.INTERNAL_SERVER_ERROR,
+                        "Unable to merge video"
+                    )
+                );
+            })
+            .mergeToFile(outputPath, "./temp");
+    });
 };

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { trimVideo, uploadVideo } from "../services/video.service";
+import { mergeVideos, trimVideo, uploadVideo } from "../services/video.service";
 import httpStatus from "http-status";
 import catchAsync from "../utils/catchAsync";
 import ApiError from "../utils/ApiError";
@@ -30,5 +30,18 @@ export const trim = catchAsync(async (req: Request, res: Response) => {
         throw new ApiError(httpStatus.BAD_REQUEST, "All fields are required");
     }
     const url = await trimVideo(videoId, start, end);
+    res.status(httpStatus.OK).json({ url });
+});
+
+export const merge = catchAsync(async (req: Request, res: Response) => {
+    const { videoIds } = req.body;
+    console.log("videoIds", videoIds);
+
+    if (!Array.isArray(videoIds) || videoIds.length === 0) {
+        return res.status(400).json({
+            message: "Invalid input. Provide an array of video IDs.",
+        });
+    }
+    const url = await mergeVideos(videoIds);
     res.status(httpStatus.OK).json({ url });
 });

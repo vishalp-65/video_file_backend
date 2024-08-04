@@ -2,6 +2,7 @@ import { uploadToS3 } from "../utils/s3_utils";
 import {
     downloadFile,
     getVideoDuration,
+    mergeVideoFiles,
     trimVideoFile,
 } from "../utils/video_utils";
 import fs from "fs";
@@ -9,9 +10,11 @@ import ApiError from "../utils/ApiError";
 import httpStatus from "http-status";
 import path from "path";
 import Video from "../models/videoModel";
+import { v4 as uuidv4 } from "uuid";
 
 export const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
+    console.log("tempPath", tempPath);
     const duration = await getVideoDuration(tempPath);
 
     const { mimetype, size, filename, buffer } = file;
@@ -90,6 +93,45 @@ export const trimVideo = async (
 
     fs.unlinkSync(tempFilePath);
     fs.unlinkSync(trimmedFilePath);
+
+    return url;
+};
+
+export const mergeVideos = async (videoIds: string[]): Promise<string> => {
+    const videos = await Video.findAll({ where: { id: videoIds } });
+    if (videos.length !== videoIds.length) {
+        throw new ApiError(
+            httpStatus.NOT_FOUND,
+            "One or more videos not found"
+        );
+    }
+
+    const tempFilePaths: string[] = [];
+    for (const video of videos) {
+        const tempFilePath = path.join(
+            __dirname,
+            `../../temp/${video.filename}`
+        );
+        tempFilePaths.push(tempFilePath);
+        await downloadFile(video.url, tempFilePath);
+    }
+
+    const mergedFilePath = path.join(
+        __dirname,
+        `../../temp/merged-${uuidv4()}.mp4`
+    );
+
+    await mergeVideoFiles(tempFilePaths, mergedFilePath);
+
+    const mergedFile = fs.readFileSync(mergedFilePath);
+    const url = await uploadToS3(
+        mergedFile,
+        `merged-${uuidv4()}.mp4`,
+        "video/mp4"
+    );
+
+    tempFilePaths.forEach((filePath) => fs.unlinkSync(filePath));
+    fs.unlinkSync(mergedFilePath);
 
     return url;
 };
