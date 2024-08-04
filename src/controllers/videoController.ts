@@ -1,5 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import { mergeVideos, trimVideo, uploadVideo } from "../services/video.service";
+import {
+    generateShareableLink,
+    mergeVideos,
+    trimVideo,
+    uploadVideo,
+} from "../services/video.service";
 import httpStatus from "http-status";
 import catchAsync from "../utils/catchAsync";
 import ApiError from "../utils/ApiError";
@@ -43,5 +48,14 @@ export const merge = catchAsync(async (req: Request, res: Response) => {
         });
     }
     const url = await mergeVideos(videoIds);
+    res.status(httpStatus.OK).json({ url });
+});
+
+export const shareLink = catchAsync(async (req: Request, res: Response) => {
+    const { videoId } = req.body;
+    if (!videoId) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "Video ID is required");
+    }
+    const url = await generateShareableLink(videoId);
     res.status(httpStatus.OK).json({ url });
 });

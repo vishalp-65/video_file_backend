@@ -11,6 +11,9 @@ import httpStatus from "http-status";
 import path from "path";
 import Video from "../models/videoModel";
 import { v4 as uuidv4 } from "uuid";
+import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import s3Client from "../config/s3Config";
 
 export const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
@@ -134,4 +137,24 @@ export const mergeVideos = async (videoIds: string[]): Promise<string> => {
     fs.unlinkSync(mergedFilePath);
 
     return url;
+};
+
+export const generateShareableLink = async (
+    videoId: string
+): Promise<string> => {
+    const video = await Video.findByPk(videoId);
+    if (!video) {
+        throw new ApiError(httpStatus.NOT_FOUND, "Video not found");
+    }
+
+    const getObjectCommand = new GetObjectCommand({
+        Bucket: process.env.AWS_S3_BUCKET!,
+        Key: `uploads/videos/${video.filename}`,
+    });
+
+    const signedURL = await getSignedUrl(s3Client, getObjectCommand, {
+        expiresIn: 60 * 60,
+    });
+
+    return signedURL.split("?")[0];
 };
