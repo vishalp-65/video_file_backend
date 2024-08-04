@@ -81,7 +81,7 @@ export const trimVideo = async (
     const tempFilePath = path.join(__dirname, `../../temp/${video.filename}`);
     const trimmedFilePath = path.join(
         __dirname,
-        `../../temp/trimmed-${video.filename}`
+        `../../temp/trimmed-${video.filename}.mp4`
     );
 
     await downloadFile(video.url, tempFilePath);

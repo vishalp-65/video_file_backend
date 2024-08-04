@@ -31,8 +31,14 @@ export const upload = catchAsync(async (req: Request, res: Response) => {
 export const trim = catchAsync(async (req: Request, res: Response) => {
     const { videoId, start, end } = req.body;
 
-    if (!videoId || !start || !end) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "All fields are required");
+    if (!videoId) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "videoId is required");
+    }
+    if (!start) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "start time is required");
+    }
+    if (!end) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "end time is required");
     }
     const url = await trimVideo(videoId, start, end);
     res.status(httpStatus.OK).json({ url });
