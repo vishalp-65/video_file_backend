@@ -8,7 +8,7 @@ import path from "path";
 import { ensureDirectoryExists } from "../validation/validatePath";
 
 // Set the path to the ffprobe binary
-ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe");
+// ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe"); // Only for window(My local machine)
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 export const getVideoDuration = (filePath: string): Promise<number> => {
@@ -66,7 +66,6 @@ export const trimVideoFile = async (
         ensureDirectoryExists(outputPath);
         ensureDirectoryExists(inputPath);
 
-        console.log("Executing FFmpeg command");
         return await new Promise<void>((resolve, reject) => {
             ffmpeg(inputPath)
                 .setStartTime(start)

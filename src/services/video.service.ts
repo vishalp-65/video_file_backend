@@ -14,10 +14,10 @@ import { v4 as uuidv4 } from "uuid";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "../config/s3Config";
+import { AWS_S3_BUCKET } from "../config/serverConfig";
 
 export const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
-    console.log("tempPath", tempPath);
     const duration = await getVideoDuration(tempPath);
 
     const { mimetype, size, filename, buffer } = file;
@@ -53,7 +53,6 @@ export const uploadVideo = async (file: Express.Multer.File) => {
 
     const key = `videos/${filename}`;
     const url = await uploadToS3(fs.readFileSync(tempPath), key, mimetype);
-    console.log("url", url);
     await fs.promises.unlink(tempPath);
 
     // Save metadata to SQLite
@@ -85,13 +84,15 @@ export const trimVideo = async (
     );
 
     await downloadFile(video.url, tempFilePath);
-    console.log("file downloaded");
 
     await trimVideoFile(tempFilePath, trimmedFilePath, start, end);
-    console.log("file trimmed");
 
     const trimmedFile = fs.readFileSync(trimmedFilePath);
-    const url = await uploadToS3(trimmedFile, video.filename, video.mimetype);
+    const url = await uploadToS3(
+        trimmedFile,
+        `trimmed/${video.filename}`,
+        video.mimetype
+    );
     console.log("url", url);
 
     fs.unlinkSync(tempFilePath);
@@ -148,7 +149,7 @@ export const generateShareableLink = async (
     }
 
     const getObjectCommand = new GetObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET!,
+        Bucket: AWS_S3_BUCKET!,
         Key: `uploads/videos/${video.filename}`,
     });
 

@@ -1,7 +1,6 @@
 import app from "./app";
 import { sequelize } from "./models/videoModel";
-
-const PORT = process.env.PORT;
+import { PORT } from "./config/serverConfig";
 
 const startServer = async () => {
     try {

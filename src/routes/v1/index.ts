@@ -5,7 +5,7 @@ import httpStatus from "http-status";
 
 const router = Router();
 
-router.use("/video", videoRoutes);
+router.use("/video", authMiddleware, videoRoutes);
 
 // Checking api is live
 router.get("/info", authMiddleware, (req, res) => {

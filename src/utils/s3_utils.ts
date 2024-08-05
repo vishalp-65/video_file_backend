@@ -2,6 +2,9 @@ import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import axios from "axios";
 import s3Client from "../config/s3Config";
+import { AWS_S3_BUCKET } from "../config/serverConfig";
+import httpStatus from "http-status";
+import ApiError from "./ApiError";
 
 export const uploadToS3 = async (
     file: Buffer,
@@ -9,26 +12,35 @@ export const uploadToS3 = async (
     videoType: string
 ): Promise<string> => {
     const putObjectCommand = new PutObjectCommand({
-        Bucket: process.env.AWS_S3_BUCKET,
+        Bucket: AWS_S3_BUCKET,
         Key: `uploads/${key}`,
     });
-
+    console.log("put");
     const signedURL = await getSignedUrl(s3Client, putObjectCommand, {
         expiresIn: 900,
     });
 
+    console.log("Uploading start...");
     // Upload the file to the signed URL
-    await axios.put(signedURL, file, {
-        headers: {
-            "Content-Type": videoType,
-        },
-        onUploadProgress: (progressEvent) => {
-            const percentage = Math.round(
-                (progressEvent.loaded * 100) / progressEvent.total!
-            );
-            console.log(`Upload progress: ${percentage}%`);
-        },
-    });
+    try {
+        await axios.put(signedURL, file, {
+            headers: {
+                "Content-Type": videoType,
+            },
+            onUploadProgress: (progressEvent) => {
+                const percentage = Math.round(
+                    (progressEvent.loaded * 100) / progressEvent.total!
+                );
+                console.log(`Upload progress: ${percentage}%`);
+            },
+        });
+    } catch (error) {
+        console.log("Error while uploading video to S3", error);
+        throw new ApiError(
+            httpStatus.INTERNAL_SERVER_ERROR,
+            "Unable to upload video on S3"
+        );
+    }
 
     // Return the file URL (without query parameters)
     return signedURL.split("?")[0];
