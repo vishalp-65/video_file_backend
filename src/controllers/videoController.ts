@@ -34,12 +34,19 @@ export const trim = catchAsync(async (req: Request, res: Response) => {
     if (!videoId) {
         throw new ApiError(httpStatus.BAD_REQUEST, "videoId is required");
     }
-    if (!start) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "start time is required");
+    if (!start || start < 0) {
+        throw new ApiError(httpStatus.BAD_REQUEST, "Invalid start time");
     }
     if (!end) {
         throw new ApiError(httpStatus.BAD_REQUEST, "end time is required");
     }
+    if (end <= start) {
+        throw new ApiError(
+            httpStatus.BAD_REQUEST,
+            "end time must be greater then start"
+        );
+    }
+
     const url = await trimVideo(videoId, start, end);
     res.status(httpStatus.OK).json({ url });
 });

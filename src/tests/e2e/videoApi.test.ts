@@ -1,56 +1,63 @@
+// src/tests/e2e/videoApi.test.ts
+
 import request from "supertest";
-import { v4 as uuidv4 } from "uuid";
-import Video from "../../models/videoModel";
 import app from "../../app";
-import { uploadToS3 } from "../../utils/s3_utils";
+import { v4 as uuidv4 } from "uuid";
+import { mockVideos, mockTrimmedVideo } from "../mockData";
+import Video from "../../models/videoModel";
 
 jest.mock("../../models/videoModel");
-jest.mock("../../utils/video_utils");
-jest.mock("uuid");
 
 describe("Video API Endpoints", () => {
-    beforeEach(() => {
-        (uuidv4 as jest.Mock).mockReturnValue("unique-id");
-    });
+    it("should merge videos and return a URL", async () => {
+        const videoIds = [mockVideos[0].id, mockVideos[1].id];
 
-    it("should trim a video", async () => {
-        const response = await request(app).post("/trim").send({
-            inputPath: "input.mp4",
-            outputPath: "output.mp4",
-            start: 0,
-            end: 10,
-        });
-        expect(response.status).toBe(200);
-        expect(response.body.message).toBe("Video trimmed successfully");
-    });
-
-    it("should merge videos", async () => {
-        (Video.findAll as jest.Mock).mockResolvedValue([
-            {
-                id: "1",
-                filename: "video1.mp4",
-                url: "http://example.com/video1.mp4",
-            },
-            {
-                id: "2",
-                filename: "video2.mp4",
-                url: "http://example.com/video2.mp4",
-            },
-        ]);
-        (uploadToS3 as jest.Mock).mockResolvedValue(
-            "http://example.com/uploads/unique-id.mp4"
-        );
+        (Video.findAll as jest.Mock).mockResolvedValue(mockVideos);
 
         const response = await request(app)
-            .post("/merge")
-            .send({ videoIds: ["1", "2"] });
+            .post("/api/videos/merge")
+            .send({ videoIds });
+
         expect(response.status).toBe(200);
-        expect(response.body.url).toBe(
-            "http://example.com/uploads/unique-id.mp4"
-        );
+        expect(response.body.url).toContain("merged-video.mp4");
     });
 
-    it("should generate a shareable link", async () => {
-        // Add your test case here
+    it("should return 404 if one or more videos are not found", async () => {
+        const videoIds = [uuidv4(), uuidv4()];
+
+        (Video.findAll as jest.Mock).mockResolvedValue([]);
+
+        const response = await request(app)
+            .post("/api/videos/merge")
+            .send({ videoIds });
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe("One or more videos not found");
+    });
+
+    it("should trim the video and return a URL", async () => {
+        const videoId = mockTrimmedVideo.id;
+
+        (Video.findByPk as jest.Mock).mockResolvedValue(mockTrimmedVideo);
+
+        const response = await request(app)
+            .post(`/api/videos/trim/${videoId}`)
+            .send({ start: 0, end: 10 });
+
+        expect(response.status).toBe(200);
+        expect(response.body.url).toContain("trimmed-video.mp4");
+    });
+
+    it("should return 404 if the video is not found", async () => {
+        const videoId = uuidv4();
+
+        (Video.findByPk as jest.Mock).mockResolvedValue(null);
+
+        const response = await request(app)
+            .post(`/api/videos/trim/${videoId}`)
+            .send({ start: 0, end: 10 });
+
+        expect(response.status).toBe(404);
+        expect(response.body.message).toBe("Video not found");
     });
 });

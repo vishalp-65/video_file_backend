@@ -1,121 +1,87 @@
-import fs from "fs";
-import path from "path";
-import ffmpeg from "fluent-ffmpeg";
-import httpStatus from "http-status";
-import { trimVideoFile } from "../../utils/video_utils";
-import ApiError from "../../utils/ApiError";
-import { ensureDirectoryExists } from "../../validation/validatePath";
+// src/tests/unit/videoUtils.test.ts
 
-jest.mock("fs");
-jest.mock("fluent-ffmpeg");
+import { v4 as uuidv4 } from "uuid";
+import { mockVideos, mockTrimmedVideo } from "../mockData";
+import Video from "../../models/videoModel";
+import {
+    generateShareableLink,
+    mergeVideos,
+    trimVideo,
+} from "../../services/video.service";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { AWS_S3_BUCKET } from "../../config/serverConfig";
 
-describe("Video Utils", () => {
-    describe("ensureDirectoryExists", () => {
-        const filePath = "path/to/file.txt";
+jest.mock("../../models/videoModel");
+jest.mock("../../models/videoModel");
+jest.mock("@aws-sdk/s3-request-presigner", () => ({
+    getSignedUrl: jest.fn(),
+}));
 
-        afterEach(() => {
-            jest.clearAllMocks();
-        });
+describe("mergeVideos", () => {
+    it("should merge videos and return a URL", async () => {
+        const videoIds = [mockVideos[0].id, mockVideos[1].id];
 
-        it("should create directory if it does not exist", () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(false);
+        (Video.findAll as jest.Mock).mockResolvedValue(mockVideos);
 
-            ensureDirectoryExists(filePath);
+        const url = await mergeVideos(videoIds);
 
-            expect(fs.existsSync).toHaveBeenCalledWith(path.dirname(filePath));
-            expect(fs.mkdirSync).toHaveBeenCalledWith(path.dirname(filePath), {
-                recursive: true,
-            });
-        });
-
-        it("should not create directory if it already exists", () => {
-            (fs.existsSync as jest.Mock).mockReturnValue(true);
-
-            ensureDirectoryExists(filePath);
-
-            expect(fs.existsSync).toHaveBeenCalledWith(path.dirname(filePath));
-            expect(fs.mkdirSync).not.toHaveBeenCalled();
-        });
+        expect(url).toContain("merged-video.mp4");
     });
 
-    describe("trimVideoFile", () => {
-        const inputPath = "path/to/input.mp4";
-        const outputPath = "path/to/output.mp4";
-        const start = 60;
-        const end = 120;
+    it("should throw an error if one or more videos are not found", async () => {
+        const videoIds = [uuidv4(), uuidv4()];
 
-        beforeEach(() => {
-            jest.clearAllMocks();
-        });
+        (Video.findAll as jest.Mock).mockResolvedValue([]);
 
-        it("should trim the video file correctly", async () => {
-            const mockFfmpeg = {
-                setStartTime: jest.fn().mockReturnThis(),
-                setDuration: jest.fn().mockReturnThis(),
-                output: jest.fn().mockReturnThis(),
-                on: jest.fn().mockReturnThis(),
-                run: jest.fn(),
-            };
+        await expect(mergeVideos(videoIds)).rejects.toThrow(
+            "One or more videos not found"
+        );
+    });
+});
 
-            (ffmpeg as any).mockReturnValue(mockFfmpeg);
+describe("trimVideo", () => {
+    it("should trim the video and return a URL", async () => {
+        const videoId = mockTrimmedVideo.id;
 
-            mockFfmpeg.on
-                .mockImplementationOnce((event, callback) => {
-                    if (event === "end") {
-                        callback();
-                    }
-                    return mockFfmpeg;
-                })
-                .mockImplementationOnce((event, callback) => {
-                    if (event === "error") {
-                        callback(new Error("ffmpeg error"));
-                    }
-                    return mockFfmpeg;
-                });
+        (Video.findByPk as jest.Mock).mockResolvedValue(mockTrimmedVideo);
 
-            await trimVideoFile(inputPath, outputPath, start, end);
+        const url = await trimVideo(videoId, 0, 10);
 
-            expect(ffmpeg).toHaveBeenCalledWith(inputPath);
-            expect(mockFfmpeg.setStartTime).toHaveBeenCalledWith(start);
-            expect(mockFfmpeg.setDuration).toHaveBeenCalledWith(end - start);
-            expect(mockFfmpeg.output).toHaveBeenCalledWith(outputPath);
-            expect(mockFfmpeg.on).toHaveBeenCalledWith(
-                "end",
-                expect.any(Function)
-            );
-            expect(mockFfmpeg.on).toHaveBeenCalledWith(
-                "error",
-                expect.any(Function)
-            );
-            expect(mockFfmpeg.run).toHaveBeenCalled();
-        });
+        expect(url).toContain("trimmed-video.mp4");
+    });
 
-        it("should throw an error if ffmpeg fails", async () => {
-            const mockFfmpeg = {
-                setStartTime: jest.fn().mockReturnThis(),
-                setDuration: jest.fn().mockReturnThis(),
-                output: jest.fn().mockReturnThis(),
-                on: jest.fn().mockReturnThis(),
-                run: jest.fn(),
-            };
+    it("should throw an error if the video is not found", async () => {
+        const videoId = uuidv4();
 
-            (ffmpeg as any).mockReturnValue(mockFfmpeg);
+        (Video.findByPk as jest.Mock).mockResolvedValue(null);
 
-            mockFfmpeg.on.mockImplementationOnce((event, callback) => {
-                if (event === "error") {
-                    callback(new Error("ffmpeg error"));
-                }
-                return mockFfmpeg;
-            });
+        await expect(trimVideo(videoId, 0, 10)).rejects.toThrow(
+            "Video not found"
+        );
+    });
+});
 
-            await expect(
-                trimVideoFile(inputPath, outputPath, start, end)
-            ).rejects.toThrow(
-                new ApiError(
-                    httpStatus.INTERNAL_SERVER_ERROR,
-                    "Unable to trim video"
-                )
-            );
-        });
+describe("generateShareableLink", () => {
+    it("should generate a shareable link", async () => {
+        const videoId = "387810b8-f9fc-48d2-92f3-4694b572dfd0";
+        const videoData = { id: videoId, filename: "sample-video.mp4" };
+        (Video.findByPk as jest.Mock).mockResolvedValue(videoData);
+        (getSignedUrl as jest.Mock).mockResolvedValue(
+            `https://s3.amazonaws.com/${AWS_S3_BUCKET}/uploads/videos/${videoData.filename}?signed-url`
+        );
+
+        const link = await generateShareableLink(videoId);
+
+        expect(link).toContain(videoData.filename);
+        expect(link).toContain("signed-url");
+    });
+
+    it("should throw an error if video is not found", async () => {
+        const videoId = "387810b8-f9fc-48d2-92f3-4694b572dfd0";
+        (Video.findByPk as jest.Mock).mockResolvedValue(null);
+
+        await expect(generateShareableLink(videoId)).rejects.toThrow(
+            "Video not found"
+        );
     });
 });
