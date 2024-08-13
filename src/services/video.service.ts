@@ -15,6 +15,10 @@ import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import s3Client from "../config/s3Config";
 import { AWS_S3_BUCKET } from "../config/serverConfig";
+import {
+    downloadFileWithRetry,
+    uploadFileWithRetry,
+} from "../utils/downloadWithRetry";
 
 export const uploadVideo = async (file: Express.Multer.File) => {
     const tempPath = file.path;
@@ -96,7 +100,7 @@ export const trimVideo = async (
     );
 
     // Download video file from S3
-    await downloadFile(video.url, tempFilePath);
+    await downloadFileWithRetry(video.url, tempFilePath, 3);
 
     // Trimming the video
     await trimVideoFile(tempFilePath, trimmedFilePath, start, end);
@@ -104,7 +108,7 @@ export const trimVideo = async (
     const trimmedFile = fs.readFileSync(trimmedFilePath);
 
     // Upload trimmed file on S3
-    const url = await uploadToS3(
+    const url = await uploadFileWithRetry(
         trimmedFile,
         `trimmed/${video.filename}`,
         video.mimetype

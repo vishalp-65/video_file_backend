@@ -2,23 +2,24 @@
 
 import Video from "../../models/videoModel";
 import { generateShareableLink } from "../../services/video.service";
+import { emptyVideos, expectedBaseUrl, mockVideos } from "../mock/mockData";
 
-jest.mock("../../src/models/videoModel");
-jest.mock("../../src/models/videoTokenModel");
+jest.mock("../../models/videoModel");
+Video.findByPk = jest.fn();
 
 describe("generateShareableLink", () => {
     it("should generate a shareable link", async () => {
-        const videoId = "387810b8-f9fc-48d2-92f3-4694b572dfd0";
+        const videoId = mockVideos[0].id;
 
-        (Video.findByPk as jest.Mock).mockResolvedValue(videoId);
+        (Video.findByPk as jest.Mock).mockResolvedValue(mockVideos[0]);
 
         const link = await generateShareableLink(videoId);
 
-        expect(link).toContain(videoId);
+        expect(link.startsWith(`${expectedBaseUrl}/videos`)).toBe(true);
     });
 
     it("should throw an error if video is not found", async () => {
-        const videoId = "387810b8-f9fc-48d2-92f3-4694b572dfd0";
+        const videoId = emptyVideos[0].id;
         (Video.findByPk as jest.Mock).mockResolvedValue(null);
 
         await expect(generateShareableLink(videoId)).rejects.toThrow(

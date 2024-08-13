@@ -51,8 +51,13 @@ This project provides a REST API for handling video file operations, including u
    ```bash
    npm run dev
    ```
+5. **Run the test cases:**
 
-5. **Access the API:**
+   ```bash
+   npm run test
+   ```
+
+6. **Access the API:**
 
    The API will be available at `http://localhost:8000`.
 

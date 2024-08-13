@@ -6,6 +6,7 @@ import axios from "axios";
 import fs from "fs";
 import path from "path";
 import { ensureDirectoryExists } from "../validation/validatePath";
+import { AggregateError } from "sequelize";
 
 // Set the path to the ffprobe binary
 // ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe"); // Only for window(My local machine)
@@ -100,19 +101,24 @@ export const downloadFile = async (
     destPath: string
 ): Promise<void> => {
     try {
-        // Create the directory if it doesn't exist
-        const dir = path.dirname(destPath);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
-
+        // Ensure the directory exists
+        ensureDirectoryExists(destPath);
+        console.log("Created directory at:", destPath);
         const response = await axios.get(url, { responseType: "arraybuffer" });
         fs.writeFileSync(destPath, Buffer.from(response.data));
-    } catch (error) {
-        console.log("error", error);
+    } catch (error: any) {
+        console.error("Error occurred during file download:", error);
+
+        if (error instanceof AggregateError) {
+            console.error("AggregateError contains multiple errors:");
+            for (const individualError of error.errors) {
+                console.error(individualError);
+            }
+        }
+
         throw new ApiError(
             httpStatus.INTERNAL_SERVER_ERROR,
-            "can't get video from S3"
+            "File download failed"
         );
     }
 };

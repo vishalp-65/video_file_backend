@@ -30,24 +30,30 @@ export const upload = catchAsync(async (req: Request, res: Response) => {
 
 export const trim = catchAsync(async (req: Request, res: Response) => {
     const { videoId, start, end } = req.body;
+    console.log({ videoId, start, end });
+    const startInt = parseInt(start);
+    const endInt = parseInt(end);
 
     if (!videoId) {
         throw new ApiError(httpStatus.BAD_REQUEST, "videoId is required");
     }
-    if (!start || start < 0) {
-        throw new ApiError(httpStatus.BAD_REQUEST, "Invalid start time");
+    if (!startInt || startInt < 0) {
+        throw new ApiError(
+            httpStatus.BAD_REQUEST,
+            `Invalid start time ${start}`
+        );
     }
-    if (!end) {
+    if (!endInt) {
         throw new ApiError(httpStatus.BAD_REQUEST, "end time is required");
     }
-    if (end <= start) {
+    if (endInt < startInt) {
         throw new ApiError(
             httpStatus.BAD_REQUEST,
             "end time must be greater then start"
         );
     }
 
-    const url = await trimVideo(videoId, start, end);
+    const url = await trimVideo(videoId, startInt, endInt);
     res.status(httpStatus.OK).json({ url });
 });
 
@@ -56,7 +62,7 @@ export const merge = catchAsync(async (req: Request, res: Response) => {
     console.log("videoIds", videoIds);
 
     if (!Array.isArray(videoIds) || videoIds.length === 0) {
-        return res.status(400).json({
+        return res.status(httpStatus.BAD_REQUEST).json({
             message: "Invalid input. Provide an array of video IDs.",
         });
     }
