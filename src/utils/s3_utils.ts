@@ -22,9 +22,9 @@ export const uploadToS3 = async (
         signedURL = await getSignedUrl(s3Client, putObjectCommand, {
             expiresIn: 600000,
         });
-        console.log("Generated Signed URL:", signedURL);
+        // console.log("Generated Signed URL:", signedURL);
     } catch (error) {
-        console.error("Error generating signed URL:", error);
+        // console.error("Error generating signed URL:", error);
         if (error instanceof Error) {
             throw new ApiError(httpStatus.INTERNAL_SERVER_ERROR, error.message);
         } else {

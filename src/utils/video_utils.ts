@@ -9,7 +9,7 @@ import { ensureDirectoryExists } from "../validation/validatePath";
 import { AggregateError } from "sequelize";
 
 // Set the path to the ffprobe binary
-// ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe"); // Only for window(My local machine)
+ffmpeg.setFfmpegPath("C:/ffmpeg/bin/ffmpeg.exe"); // Only for window(My local machine)
 ffmpeg.setFfprobePath(ffprobeStatic.path);
 
 export const getVideoDuration = (filePath: string): Promise<number> => {
